@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 # Database setup (executed when this module is imported)
-DB_PATH = os.environ.get("DB_PATH", "/app/data/countdown_bot.db")  # Get DB path from environment variable
+DB_PATH = os.environ.get("DB_PATH", "/app/data/countdown_bot.db")
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
@@ -26,13 +26,6 @@ def setup_db():
         )
     """)
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            name TEXT,
-            join_date TEXT
-        )
-    """)
-    cursor.execute("""
         CREATE TABLE IF NOT EXISTS submissions (
             submission_id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id INTEGER,
@@ -42,6 +35,7 @@ def setup_db():
             duration INTEGER,
             submission_time TEXT,
             track_id TEXT,
+            submitter_name TEXT,
             milestone_reached BOOLEAN DEFAULT 0,
             FOREIGN KEY (event_id) REFERENCES events(event_id)
         )
@@ -53,6 +47,7 @@ def setup_db():
             user_id INTEGER,
             vote_value INTEGER,
             vote_time TEXT,
+            voter_name TEXT,
             FOREIGN KEY (submission_id) REFERENCES submissions(submission_id)
         )
     """)
