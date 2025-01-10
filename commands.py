@@ -137,6 +137,58 @@ class Commands(commands.Cog):
             logging.error(f"Error during song submission: {e}")
             await ctx.author.send("⚠️ **Error submitting your song. Please try again!**")
 
+    @commands.command(name="submitvote")
+    async def submitvote(self, ctx, *votes):
+        """Submits votes to the active event (DM only)."""
+        if not isinstance(ctx.channel, discord.DMChannel):
+            await ctx.send("⚠️ This command can only be used in DMs.")
+            return
+        
+        event = get_active_event()
+        if not event:
+            await ctx.author.send("⚠️ No active event found.")
+            return
+
+        event_id = event[0]
+        event_name = event[1]
+
+        # Check if user has already voted
+        cursor.execute("SELECT COUNT(*) FROM votes WHERE user_id = ? AND submission_id IN (SELECT submission_id FROM submissions WHERE event_id = ?)", (ctx.author.id, event_id))
+        vote_count = cursor.fetchone()[0]
+        if vote_count > 0:
+            await ctx.author.send("⚠️ You have already voted in this event.")
+            return
+
+        if len(votes) != 3:
+            await ctx.author.send("⚠️ You must submit exactly 3 votes.")
+            return
+
+        vote_values = {0: 3, 1: 2, 2: 1}
+        submission_ids = []
+        for i, vote in enumerate(votes):
+            try:
+                track_number = int(vote)
+                cursor.execute("SELECT submission_id FROM submissions WHERE event_id = ? AND track_id = ?", (event_id, f"Track-{track_number}"))
+                submission = cursor.fetchone()
+                if not submission:
+                    await ctx.author.send(f"⚠️ Invalid track number: {track_number}")
+                    return
+                submission_id = submission[0]
+                submission_ids.append(submission_id)
+            except ValueError:
+                await ctx.author.send(f"⚠️ Invalid track number format: {vote}")
+                return
+
+        # Store the votes
+        for i, submission_id in enumerate(submission_ids):
+            vote_value = vote_values[i]
+            cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)",
+                           (submission_id, ctx.author.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), ctx.author.name))
+        conn.commit()
+
+        await ctx.author.send(f"✅ Your votes for event '{event_name}' have been recorded!")
+        await self.update_event_message(event_id)
+
     @commands.command(name="charts")
     async def charts(self, ctx):
         """Displays the current leaderboard (Charts) for the active event."""
