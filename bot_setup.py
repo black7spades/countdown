@@ -26,6 +26,13 @@ def setup_db():
         )
     """)
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            name TEXT,
+            join_date TEXT
+        )
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS submissions (
             submission_id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_id INTEGER,
