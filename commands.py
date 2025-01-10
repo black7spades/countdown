@@ -28,7 +28,7 @@ class Commands(commands.Cog):
 
             await ctx.send("⏳ How long should the event last? (e.g., `7 days`)")
             duration_msg = await self.bot.wait_for("message", check=check, timeout=60)
-            duration = int(duration_msg.content.split()[0])  # Store duration in days
+            duration = int(duration_msg.content)
 
             await ctx.send("📥 Minimum number of submissions required?")
             min_msg = await self.bot.wait_for("message", check=check, timeout=60)
@@ -48,7 +48,7 @@ class Commands(commands.Cog):
 
             # Calculate end time
             start_time = datetime.now()
-            end_time = start_time + timedelta(days=duration)  # Use duration in days for calculation
+            end_time = start_time + timedelta(days=duration)
 
             # Insert into database
             cursor.execute("""
@@ -124,7 +124,9 @@ class Commands(commands.Cog):
             conn.commit()
 
             logging.info(f"Submission received for event ID {event_id}: {song_name} ({song_url})")
-            await ctx.author.send(f"✅ Your song has been submitted as **{track_id}**. Check the event channel to react with your 3 votes and update the standings!")
+            cursor.execute("SELECT name FROM events WHERE event_id = ?", (event_id,))
+            event_name = cursor.fetchone()[0]
+            await ctx.author.send(f"✅ Your song has been submitted as **{track_id}** to event **{event_name}**. Check the event channel to react with your 3 votes and update the standings!")
             await self.update_event_message(event_id)
 
         except asyncio.TimeoutError:
@@ -219,11 +221,12 @@ class Commands(commands.Cog):
             target_score = total_points_for_100 * milestone
 
             if score >= target_score:
-                milestone_reached = False
                 cursor.execute("SELECT milestone_reached FROM submissions WHERE submission_id = ?", (submission_id,))
                 result = cursor.fetchone()
                 if result:
                     milestone_reached = bool(result[0])
+                else:
+                    milestone_reached = False
 
                 if not milestone_reached:
                     try:
