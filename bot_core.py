@@ -38,34 +38,36 @@ async def on_ready():
 async def on_reaction_add(reaction, user):
     if user == bot.user:
         return
-    
+
     message = reaction.message
-    if message.author != bot.user:
-      return
+    if not message.content.startswith("✅ Your song has been submitted as"):
+        return
 
-    cursor.execute("SELECT events.* FROM events INNER JOIN submissions ON events.event_id = submissions.event_id WHERE submissions.url = ? AND events.active = 1", (reaction.message.content,))
+    # Extract track ID and event name from the message
+    track_id = message.content.split("**")[1]
+    event_name = message.content.split("**")[3]
+
+    # Fetch event ID and submission ID using track ID and event name
+    cursor.execute("SELECT event_id FROM events WHERE name = ?", (event_name,))
     event = cursor.fetchone()
-
     if not event:
         return
-
     event_id = event[0]
 
-    cursor.execute("SELECT submission_id FROM submissions WHERE event_id = ? AND url = ?", (event_id, reaction.message.content))
+    cursor.execute("SELECT submission_id FROM submissions WHERE track_id = ? AND event_id = ?", (track_id, event_id))
     submission = cursor.fetchone()
-
     if not submission:
         return
-
     submission_id = submission[0]
 
-    # Check if user has already voted 3 times
+    # Check if user has already voted 3 times for this event
     cursor.execute("SELECT COUNT(*) FROM votes WHERE submission_id IN (SELECT submission_id FROM submissions WHERE event_id = ?) AND user_id = ?", (event_id, user.id))
     vote_count = cursor.fetchone()[0]
 
     if vote_count >= 3:
         return
 
+    # Other checks and code
     vote_value = VOTE_VALUES.get(vote_count, 1)
 
     cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time) VALUES (?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -76,7 +78,7 @@ async def on_reaction_add(reaction, user):
     await bot.get_cog("Commands").update_event_message(event_id)
 
     if score >= 100:
-      await bot.get_cog("Commands").end_event(event_id)
+        await bot.get_cog("Commands").end_event(event_id)
 
 # Load commands extension
 bot.load_extension('commands')
