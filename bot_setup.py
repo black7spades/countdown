@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 # Database setup (executed when this module is imported)
-DB_PATH = os.environ.get("DB_PATH", "/app/data/countdown_bot.db")
+DB_PATH = os.environ.get("DB_PATH", "/app/data/countdown_bot.db")  # Get DB path from environment variable
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
@@ -22,6 +22,7 @@ def setup_db():
             end_time TEXT,
             channel_id INTEGER,
             message_id INTEGER,
+            highest_score INTEGER DEFAULT 0,
             active INTEGER DEFAULT 0
         )
     """)

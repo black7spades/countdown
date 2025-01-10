@@ -18,7 +18,7 @@ intents.reactions = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Constants
-VOTE_VALUES = {0: 3, 1: 2, 2: 1}  # Weighted scoring
+VOTE_VALUES = {0: 5, 1: 3, 2: 1}  # Updated weighted scoring
 WINNERS_CHANNEL_ID = int(os.environ.get("WINNERS_CHANNEL_ID", 0))  # Get winners channel ID from environment
 
 # Bot Events
@@ -72,10 +72,12 @@ async def on_reaction_add(reaction, user):
 
     cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user.name))
     conn.commit()
+    
+    await bot.get_cog("Commands").update_event_message(event_id)
 
     score = bot.get_cog("Commands").calculate_score(submission_id)
     await bot.get_cog("Commands").check_milestones(event_id, submission_id, score)
-    await bot.get_cog("Commands").update_event_message(event_id)
+
 
     if score >= 100:
         await bot.get_cog("Commands").end_event(event_id)
