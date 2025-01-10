@@ -1,0 +1,86 @@
+import os
+import logging
+import asyncio
+from datetime import datetime, timedelta
+
+import discord
+from discord.ext import commands
+
+from bot_setup import conn, cursor, get_active_event, setup_db, DB_PATH
+
+# Configure logging
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))  # Get log level from environment
+
+# Bot setup
+intents = discord.Intents.default()
+intents.message_content = True
+intents.reactions = True
+bot = commands.Bot(command_prefix="/", intents=intents)
+
+# Constants
+VOTE_VALUES = {0: 3, 1: 2, 2: 1}  # Weighted scoring
+WINNERS_CHANNEL_ID = int(os.environ.get("WINNERS_CHANNEL_ID", 0))  # Get winners channel ID from environment
+
+# Bot Events
+@bot.event
+async def on_ready():
+    logging.info(f"Logged in as {bot.user.name} ({bot.user.id})")
+
+    # Start background tasks for each active event
+    cursor.execute("SELECT event_id FROM events WHERE active = 1")
+    active_events = cursor.fetchall()
+
+    for event in active_events:
+        event_id = event[0]
+        bot.loop.create_task(bot.get_cog("Commands").event_loop(event_id))
+
+@bot.event
+async def on_reaction_add(reaction, user):
+    if user == bot.user:
+        return
+    
+    message = reaction.message
+    if message.author != bot.user:
+      return
+
+    cursor.execute("SELECT events.* FROM events INNER JOIN submissions ON events.event_id = submissions.event_id WHERE submissions.url = ? AND events.active = 1", (reaction.message.content,))
+    event = cursor.fetchone()
+
+    if not event:
+        return
+
+    event_id = event[0]
+
+    cursor.execute("SELECT submission_id FROM submissions WHERE event_id = ? AND url = ?", (event_id, reaction.message.content))
+    submission = cursor.fetchone()
+
+    if not submission:
+        return
+
+    submission_id = submission[0]
+
+    # Check if user has already voted 3 times
+    cursor.execute("SELECT COUNT(*) FROM votes WHERE submission_id IN (SELECT submission_id FROM submissions WHERE event_id = ?) AND user_id = ?", (event_id, user.id))
+    vote_count = cursor.fetchone()[0]
+
+    if vote_count >= 3:
+        return
+
+    vote_value = VOTE_VALUES.get(vote_count, 1)
+
+    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time) VALUES (?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+
+    score = bot.get_cog("Commands").calculate_score(submission_id)
+    await bot.get_cog("Commands").check_milestones(event_id, submission_id, score)
+    await bot.get_cog("Commands").update_event_message(event_id)
+
+    if score >= 100:
+      await bot.get_cog("Commands").end_event(event_id)
+
+# Load commands extension
+bot.load_extension('commands')
+
+# Run the bot
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot.run(BOT_TOKEN)
