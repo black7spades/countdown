@@ -472,7 +472,7 @@ async def generate_user_leaderboard(self, event_id, event_name, user_id):
                     conn.commit()
 
     async def end_event(self, event_id):
-        """Ends the event and displays the results."""
+        """Ends the event, displays the results, and provides options for publishing."""
         event = self.get_event(event_id)
         if not event:
             return
@@ -503,9 +503,56 @@ async def generate_user_leaderboard(self, event_id, event_name, user_id):
         except Exception as e:
             logging.error(f"Failed to send results message: {e}")
 
+        # Send results to admin channel and prompt for action
+        admin_channel_id = int(os.environ.get("ADMIN_CHANNEL_ID", channel_id)) # You'll need to add an ADMIN_CHANNEL_ID env variable.
+        admin_channel = self.bot.get_channel(admin_channel_id)
+
+        if admin_channel:
+            admin_results = await self.generate_admin_leaderboard(event_id, event[1])
+            await admin_channel.send(admin_results)
+            await admin_channel.send("Event has ended. What would you like to do?\n\n1. Publish final results to #general\n2. Countdown results from lowest to highest\n3. Exit and finish the event")
+
+            def check(msg):
+                return msg.channel == admin_channel and msg.author.guild_permissions.administrator
+
+            try:
+                response_msg = await self.bot.wait_for("message", check=check, timeout=120)
+                response = response_msg.content.lower()
+
+                if response == "1":
+                    public_channel_id = int(os.environ.get("PUBLIC_CHANNEL_ID", channel_id)) # Use event channel as default
+                    public_channel = self.bot.get_channel(public_channel_id)
+                    if public_channel:
+                        public_results = await self.generate_public_leaderboard(event_id, event[1])
+                        await public_channel.send(public_results)
+                        await admin_channel.send("Final results published to the public channel!")
+                    else:
+                        await admin_channel.send("⚠️ Public channel ID not configured. Could not publish results.")
+
+                elif response == "2":
+                    await admin_channel.send("Counting down results...")
+                    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=False)  # Sort ascending for countdown
+                    for rank, (song, score) in enumerate(sorted_scores, 1):
+                        await channel.send(f"{len(sorted_scores) - rank + 1}. {song} - **{score}** points")
+                        await asyncio.sleep(5)  # 5-second delay between announcements
+
+                    await admin_channel.send("Countdown complete!")
+
+                elif response == "3":
+                    await admin_channel.send("Exiting and finishing the event.")
+
+                else:
+                    await admin_channel.send("Invalid response. Event finished without further action.")
+
+            except asyncio.TimeoutError:
+                await admin_channel.send("⚠️ No response received. Event finished without further action.")
+
         # Mark event as inactive
         cursor.execute("UPDATE events SET active = 0 WHERE event_id = ?", (event_id,))
         conn.commit()
+
+        # Clear previous standings
+        self.save_current_standings("")
 
         logging.info(f"Event {event_id} has ended and been marked inactive.")
 
