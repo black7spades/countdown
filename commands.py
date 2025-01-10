@@ -193,45 +193,45 @@ class Commands(commands.Cog):
         await ctx.author.send(f"✅ Your votes for event '{event_name}' have been recorded!")
         await self.update_event_message(event_id)
         
-        @commands.command(name="charts")
+    @commands.command(name="charts")
     @commands.has_permissions(administrator=True)
-    async def charts(self, ctx):
-        """Displays the current leaderboard (Charts) for the active event (Admin only)."""
-        event = get_active_event()
-        if not event:
-            await ctx.send("⚠️ No active event found.")
-            return
+        async def charts(self, ctx):
+         """Displays the current leaderboard (Charts) for the active event (Admin only)."""
+    event = get_active_event()
+    if not event:
+        await ctx.send("⚠️ No active event found.")
+        return
 
-        event_id = event[0]
-        event_name = event[1]
-        channel_id = event[9]
+    event_id = event[0]
+    event_name = event[1]
+    channel_id = event[9]
 
-        leaderboard_msg = await self.generate_admin_leaderboard(event_id, event_name)
-        await ctx.send(leaderboard_msg)
-        await ctx.send("Would you like to publish the standings to the public channel or exit? (publish/exit)")
+    leaderboard_msg = await self.generate_admin_leaderboard(event_id, event_name)
+    await ctx.send(leaderboard_msg)
+    await ctx.send("What would you like to do?\n\n1. Publish to [Public Channel Name]\n2. Exit")
 
-        def check(msg):
-            return msg.author == ctx.author and msg.channel == ctx.channel
+    def check(msg):
+        return msg.author == ctx.author and msg.channel == ctx.channel
 
-        try:
-            response_msg = await self.bot.wait_for("message", check=check, timeout=60)
-            response = response_msg.content.lower()
+    try:
+        response_msg = await self.bot.wait_for("message", check=check, timeout=60)
+        response = response_msg.content.lower()
 
-            if response == "publish":
-                public_channel_id = int(os.environ.get("PUBLIC_CHANNEL_ID"))  # Replace with your actual channel ID environment variable
-                if public_channel_id:
-                    public_channel = self.bot.get_channel(public_channel_id)
-                    await self.publish_public_charts(event_id, event_name, public_channel)
-                    await ctx.send("Standings published to the public channel!")
-                else:
-                    await ctx.send("⚠️ Public channel ID not configured. Please set the PUBLIC_CHANNEL_ID environment variable.")
-            elif response == "exit":
-                await ctx.send("Exiting command. Standings not published.")
+        if response == "1":
+            public_channel_id = int(os.environ.get("PUBLIC_CHANNEL_ID"))
+            if public_channel_id:
+                public_channel = self.bot.get_channel(public_channel_id)
+                await self.publish_public_charts(event_id, event_name, public_channel)
+                await ctx.send("Standings published to the public channel!")
             else:
-                await ctx.send("Invalid response. Standings not published.")
+                await ctx.send("⚠️ Public channel ID not configured. Please set the PUBLIC_CHANNEL_ID environment variable.")
+        elif response == "2":
+            await ctx.send("Exiting command. Standings not published.")
+        else:
+            await ctx.send("Invalid response. Standings not published.")
 
-        except asyncio.TimeoutError:
-            await ctx.send("⚠️ No response received. Standings not published.")
+    except asyncio.TimeoutError:
+        await ctx.send("⚠️ No response received. Standings not published.")
 
     async def generate_public_leaderboard(self, event_id, event_name):
         """Generates a formatted leaderboard for public view."""
