@@ -2,8 +2,8 @@ import os
 import logging
 import asyncio
 from datetime import datetime, timedelta
-
 import discord
+
 from discord.ext import commands
 
 from bot_setup import conn, cursor, get_active_event, setup_db, DB_PATH
@@ -15,6 +15,7 @@ logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))  # Get log level 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
+intents.members = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Constants
@@ -25,6 +26,14 @@ WINNERS_CHANNEL_ID = int(os.environ.get("WINNERS_CHANNEL_ID", 0))  # Get winners
 @bot.event
 async def on_ready():
     logging.info(f"Logged in as {bot.user.name} ({bot.user.id})")
+
+    # Add members to the users table
+    for guild in bot.guilds:
+        for member in guild.members:
+            cursor.execute("INSERT OR IGNORE INTO users (user_id, name, join_date) VALUES (?, ?, ?)",
+                           (member.id, member.name, member.joined_at.strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    logging.info("Users table updated with current members.")
 
     # Start background tasks for each active event
     cursor.execute("SELECT event_id FROM events WHERE active = 1")
