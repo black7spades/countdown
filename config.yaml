@@ -1,0 +1,13 @@
+bot:
+  token: "YOUR_BOT_TOKEN"  # Replace with your actual bot token
+  log_level: "INFO"
+  admin_channel_id: "YOUR_ADMIN_CHANNEL_ID" # Replace with the ID of your admin channel
+  public_channel_id: "YOUR_PUBLIC_CHANNEL_ID" # Replace with the ID of your public channel
+  winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with the ID of your winners channel
+
+database:
+  path: "/app/data/countdown_bot.db"
+
+event:
+  default_duration: 7  # Default duration for new events (in days)
+  milestone_percentages: [0.5, 0.75, 1.0] # 50%, 75%, 100% of highest score

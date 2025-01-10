@@ -1,9 +1,18 @@
 import sqlite3
 import os
 from datetime import datetime
+import yaml
+
+# Load configuration from YAML file
+try:
+    with open("config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+except FileNotFoundError:
+    print("Error: config.yaml not found!")
+    exit()
 
 # Database setup (executed when this module is imported)
-DB_PATH = os.environ.get("DB_PATH", "/app/data/countdown_bot.db")  # Get DB path from environment variable
+DB_PATH = config['database']['path']
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 

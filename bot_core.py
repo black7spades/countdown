@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import commands
 
-from bot_setup import conn, cursor, get_active_event, setup_db, DB_PATH
+from bot_setup import conn, cursor, get_active_event, setup_db, DB_PATH, config
 
 # Configure logging
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))  # Get log level from environment
+logging.basicConfig(level=config['bot']['log_level'])
 
 # Bot setup
 intents = discord.Intents.default()
@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Constants
 VOTE_VALUES = {0: 5, 1: 3, 2: 1}  # Updated weighted scoring
-WINNERS_CHANNEL_ID = int(os.environ.get("WINNERS_CHANNEL_ID", 0))  # Get winners channel ID from environment
+WINNERS_CHANNEL_ID = config['bot']['winners_channel_id']
 
 # Bot Events
 @bot.event
@@ -86,5 +86,5 @@ async def on_reaction_add(reaction, user):
 bot.load_extension('commands')
 
 # Run the bot
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = config['bot']['token']
 bot.run(BOT_TOKEN)
