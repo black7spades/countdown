@@ -1,9 +1,8 @@
 bot:
-  token: "YOUR_BOT_TOKEN"  # Replace with your actual bot token
   log_level: "INFO"
-  admin_channel_id: "YOUR_ADMIN_CHANNEL_ID" # Replace with the ID of your admin channel
-  public_channel_id: "YOUR_PUBLIC_CHANNEL_ID" # Replace with the ID of your public channel
-  winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with the ID of your winners channel
+  admin_channel_id: "YOUR_ADMIN_CHANNEL_ID" # Replace with your admin channel ID
+  public_channel_id: "YOUR_PUBLIC_CHANNEL_ID" # Replace with your public channel ID
+  winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with your winners channel ID
 
 database:
   path: "/app/data/countdown_bot.db"
