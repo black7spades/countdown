@@ -73,4 +73,21 @@ async def on_reaction_add(reaction, user):
     # Other checks and code
     vote_value = VOTE_VALUES.get(vote_count, 1)
 
-    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S
+    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user.name))
+    conn.commit()
+    
+    await bot.get_cog("Commands").update_event_message(event_id)
+
+    score = bot.get_cog("Commands").calculate_score(submission_id)
+    await bot.get_cog("Commands").check_milestones(event_id, submission_id, score)
+
+
+    if score >= 100:
+        await bot.get_cog("Commands").end_event(event_id)
+
+# Load commands extension
+bot.load_extension('commands')
+
+# Run the bot
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot.run(BOT_TOKEN)
