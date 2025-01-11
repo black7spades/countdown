@@ -383,6 +383,37 @@ async def generate_user_leaderboard(self, event_id, event_name, user_id):
             end_time = datetime.strptime(event[7], "%Y-%m-%d %H:%M:%S")
 
             time_left = end_time - current_time
+            embed.set_footer(text=f"Time left: {self.format_time_remaining(time_left)}") # Format time
+
+            await message.edit(embed=embed)
+
+        except discord.NotFound:
+            logging.error(f"Message with ID {message_id} not found in channel {channel_id}.")
+        except Exception as e:
+            logging.error(f"Error updating event message: {e}")
+
+    def format_time_remaining(self, time_left):
+        """Formats the remaining time into a human-readable string."""
+        days = time_left.days
+        hours, remainder = divmod(time_left.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if days > 0:
+            return f"{days} days, {hours} hours, {minutes} minutes, {seconds} seconds"
+        elif hours > 0:
+            return f"{hours} hours, {minutes} minutes, {seconds} seconds"
+        else:
+            return f"{minutes} minutes, {seconds} seconds"
+
+            # Find the highest score
+            highest_score = sorted_scores[0][1] if sorted_scores else 0
+            cursor.execute("UPDATE events SET highest_score = ? WHERE event_id = ?", (highest_score, event_id))
+            conn.commit()
+
+            current_time = datetime.now()
+            end_time = datetime.strptime(event[7], "%Y-%m-%d %H:%M:%S")
+
+            time_left = end_time - current_time
             embed.set_footer(text=f"Time left: {time_left}")
 
             await message.edit(embed=embed)
