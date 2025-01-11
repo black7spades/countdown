@@ -13,11 +13,26 @@ except FileNotFoundError:
 
 # Database setup (executed when this module is imported)
 DB_PATH = config['database']['path']
-conn = sqlite3.connect(DB_PATH)
-cursor = conn.cursor()
 
 def setup_db():
-    """Creates the necessary database tables."""
+    """Creates the necessary database tables and ensures correct permissions."""
+    db_dir = os.path.dirname(DB_PATH)
+
+    # Ensure the database directory exists with correct permissions
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, mode=0o755)  # Create directory with rwxr-xr-x permissions
+
+    # Set permissions on the directory if it already exists
+    os.chmod(db_dir, 0o755)
+
+    # Ensure the database file has correct permissions (if it exists)
+    if os.path.exists(DB_PATH):
+        os.chmod(DB_PATH, 0o644)  # Set file permissions to rw-r--r--
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Create tables if they don't exist
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS events (
             event_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +77,8 @@ def setup_db():
         )
     """)
     conn.commit()
+    conn.close()
+
 
 setup_db()  # Call the function to create tables on module import
 
@@ -76,5 +93,9 @@ def time_to_seconds(time_str):
 
 def get_active_event():
     """Retrieves the currently active event."""
+    conn = sqlite3.connect(DB_PATH)  # Reopen connection for this function
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM events WHERE active = 1")
-    return cursor.fetchone()
+    result = cursor.fetchone()
+    conn.close()
+    return result

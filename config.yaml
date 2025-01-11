@@ -5,7 +5,7 @@ bot:
   winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with your winners channel ID
 
 database:
-  path: "/app/data/countdown_bot.db"
+  path: /mnt/user/appdata/countdown/data/countdown_bot.db
 
 event:
   default_duration: 7  # Default duration for new events (in days)
