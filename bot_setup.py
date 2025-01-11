@@ -12,7 +12,9 @@ except FileNotFoundError:
     exit()
 
 # Database setup (executed when this module is imported)
-DB_PATH = config['database']['path']
+DB_PATH = os.path.join("/app/data", "countdown_bot.db") # Using the path inside the container
+
+print(f"DB_PATH: {DB_PATH}") # Added to verify the path
 
 def setup_db():
     """Creates the necessary database tables and ensures correct permissions."""
@@ -28,9 +30,6 @@ def setup_db():
     # Ensure the database file has correct permissions (if it exists)
     if os.path.exists(DB_PATH):
         os.chmod(DB_PATH, 0o644)  # Set file permissions to rw-r--r--
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
 
     # Create tables if they don't exist
     cursor.execute("""
@@ -77,8 +76,9 @@ def setup_db():
         )
     """)
     conn.commit()
-    conn.close()
 
+conn = sqlite3.connect(DB_PATH)
+cursor = conn.cursor()
 
 setup_db()  # Call the function to create tables on module import
 
@@ -93,9 +93,6 @@ def time_to_seconds(time_str):
 
 def get_active_event():
     """Retrieves the currently active event."""
-    conn = sqlite3.connect(DB_PATH)  # Reopen connection for this function
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM events WHERE active = 1")
     result = cursor.fetchone()
-    conn.close()
     return result
