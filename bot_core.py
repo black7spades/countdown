@@ -15,7 +15,18 @@ logging.basicConfig(level=config['bot']['log_level'])
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
+intents.members = True
 bot = commands.Bot(command_prefix="/", intents=intents)
+
+async def setup_hook() -> None:
+    # Start background tasks for each active event
+    cursor.execute("SELECT event_id FROM events WHERE active = 1")
+    active_events = cursor.fetchall()
+
+    for event in active_events:
+        event_id = event[0]
+        bot.loop.create_task(bot.get_cog("Commands").event_loop(event_id))
+    await bot.load_extension('commands')
 
 # Constants
 VOTE_VALUES = {0: 5, 1: 3, 2: 1}  # Updated weighted scoring
@@ -25,14 +36,6 @@ WINNERS_CHANNEL_ID = config['bot']['winners_channel_id']
 @bot.event
 async def on_ready():
     logging.info(f"Logged in as {bot.user.name} ({bot.user.id})")
-
-    # Start background tasks for each active event
-    cursor.execute("SELECT event_id FROM events WHERE active = 1")
-    active_events = cursor.fetchall()
-
-    for event in active_events:
-        event_id = event[0]
-        bot.loop.create_task(bot.get_cog("Commands").event_loop(event_id))
 
 @bot.event
 async def on_reaction_add(reaction, user):
@@ -70,21 +73,4 @@ async def on_reaction_add(reaction, user):
     # Other checks and code
     vote_value = VOTE_VALUES.get(vote_count, 1)
 
-    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user.name))
-    conn.commit()
-    
-    await bot.get_cog("Commands").update_event_message(event_id)
-
-    score = bot.get_cog("Commands").calculate_score(submission_id)
-    await bot.get_cog("Commands").check_milestones(event_id, submission_id, score)
-
-
-    if score >= 100:
-        await bot.get_cog("Commands").end_event(event_id)
-
-# Load commands extension
-bot.load_extension('commands')
-
-# Run the bot
-BOT_TOKEN = config['bot']['token']
-bot.run(BOT_TOKEN)
+    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S
