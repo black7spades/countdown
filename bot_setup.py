@@ -12,9 +12,10 @@ except FileNotFoundError:
     exit()
 
 # Database setup (executed when this module is imported)
-DB_PATH = os.path.join("/app/data", "countdown_bot.db") # Using the path inside the container
+# Use a fixed path inside the container that corresponds to your volume mount
+DB_PATH = os.path.join("/app/data", "countdown_bot.db")
 
-print(f"DB_PATH: {DB_PATH}") # Added to verify the path
+print(f"DB_PATH: {DB_PATH}")  # Verify the path
 
 def setup_db():
     """Creates the necessary database tables and ensures correct permissions."""

@@ -4,9 +4,6 @@ bot:
   public_channel_id: "YOUR_PUBLIC_CHANNEL_ID" # Replace with your public channel ID
   winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with your winners channel ID
 
-database:
-  path: /mnt/user/appdata/countdown/data/countdown_bot.db
-
 event:
   default_duration: 7  # Default duration for new events (in days)
   milestone_percentages: [0.5, 0.75, 1.0] # 50%, 75%, 100% of highest score
