@@ -132,7 +132,7 @@ async def on_reaction_add(reaction, user):
     commands_cog = bot.get_cog("Commands")
     await commands_cog.update_event_message(event_id)
     score = commands_cog.calculate_score(submission_id)
-    await commands_cog.check_milestones(event_id, submission_id, score)
+    await commands_cog.check_milestones(event_id, submission_id, score, conn, cursor)
 
     if score >= 100:
         await commands_cog.end_event(event_id)

@@ -1,3 +1,4 @@
+import sqlite3
 import os
 import logging
 import asyncio
@@ -423,25 +424,25 @@ async def generate_user_leaderboard(self, event_id, event_name, user_id):
         except Exception as e:
             logging.error(f"Error updating event message: {e}")
 
-    async def check_milestones(self, event_id, submission_id, score):
-        """Checks for milestones and sends announcements."""
-        event = self.get_event(event_id)
-        if not event:
-            return
+async def check_milestones(self, event_id, submission_id, score, conn, cursor):
+    """Checks for milestones and updates the event message."""
+    cursor.execute("SELECT milestone_reached FROM submissions WHERE submission_id = ?", (submission_id,))
+    milestone_reached = cursor.fetchone()[0]
 
-        channel_id = event[9]
-        channel = self.bot.get_channel(channel_id)
-        submission = None
-        submissions = self.get_submissions(event_id)
-        for sub in submissions:
-            if sub[0] == submission_id:
-                submission = sub
+    if not milestone_reached:
+        milestones = [25, 50, 75]
+        for milestone in milestones:
+            if score >= milestone:
+                cursor.execute("UPDATE submissions SET milestone_reached = 1 WHERE submission_id = ?", (submission_id,))
+                conn.commit()
+
+                cursor.execute("SELECT submitter_name FROM submissions WHERE submission_id = ?", (submission_id,))
+                submitter_name = cursor.fetchone()[0]
+
+                message = f"🌟 {submitter_name} has reached a milestone of {milestone} points!"
+                channel = self.bot.get_channel(config['bot']['milestones_channel_id'])
+                await channel.send(message)
                 break
-
-        if not submission:
-            return
-
-        song_name = submission[3]
 
         # Get the highest score from the database
         cursor.execute("SELECT highest_score FROM events WHERE event_id = ?", (event_id,))

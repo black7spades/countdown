@@ -20,7 +20,7 @@ RUN addgroup --system --gid 1001 appuser && \
 COPY --from=build --chown=appuser:appuser /app/ /app/
 
 # Copy your bot's code
-COPY --chown=appuser:appuser bot_setup.py bot_core.py commands.py config.yaml ./
+COPY --chown=appuser:appuser bot_setup.py bot_core.py commands.py config.yaml.example ./
 
 # Run as non-root user
 USER appuser
