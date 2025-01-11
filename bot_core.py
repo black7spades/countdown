@@ -1,4 +1,5 @@
 import os
+import sqlite3  # Import the sqlite3 module
 
 # Get the absolute path of the directory where bot_setup.py is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -7,6 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "countdown_bot.db")
 
 conn = sqlite3.connect(DB_PATH)
+cursor = conn.cursor()
 import logging
 import asyncio
 from datetime import datetime, timedelta
