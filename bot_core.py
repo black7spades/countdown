@@ -19,8 +19,14 @@ intents.members = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 async def setup_hook() -> None:
-    # Start background tasks for each active event
-    cursor.execute("SELECT event_id FROM events WHERE active = 1")
+    """Loads commands extension and starts event loops for active events."""
+    cursor.execute(
+        (
+            "SELECT event_id "
+            "FROM events "
+            "WHERE active = 1"
+        )
+    )
     active_events = cursor.fetchall()
 
     for event in active_events:
@@ -39,6 +45,7 @@ async def on_ready():
 
 @bot.event
 async def on_reaction_add(reaction, user):
+    """Handles vote recording when a reaction is added to a submission message."""
     if user == bot.user:
         return
 
@@ -51,42 +58,74 @@ async def on_reaction_add(reaction, user):
     event_name = message.content.split("**")[3]
 
     # Fetch event ID and submission ID using track ID and event name
-    cursor.execute("SELECT event_id FROM events WHERE name = ?", (event_name,))
+    cursor.execute(
+        (
+            "SELECT event_id "
+            "FROM events "
+            "WHERE name = ?"
+        ),
+        (event_name,)
+    )
     event = cursor.fetchone()
     if not event:
+        logging.warning(f"Event not found for name: {event_name}")
         return
     event_id = event[0]
 
-    cursor.execute("SELECT submission_id FROM submissions WHERE track_id = ? AND event_id = ?", (track_id, event_id))
+    cursor.execute(
+        (
+            "SELECT submission_id "
+            "FROM submissions "
+            "WHERE track_id = ? AND event_id = ?"
+        ),
+        (track_id, event_id)
+    )
     submission = cursor.fetchone()
     if not submission:
+        logging.warning(f"Submission not found for track ID: {track_id} in event: {event_id}")
         return
     submission_id = submission[0]
 
     # Check if user has already voted 3 times for this event
-    cursor.execute("SELECT COUNT(*) FROM votes WHERE submission_id IN (SELECT submission_id FROM submissions WHERE event_id = ?) AND user_id = ?", (event_id, user.id))
+    cursor.execute(
+        (
+            "SELECT COUNT(*) "
+            "FROM votes "
+            "WHERE submission_id IN ("
+            "    SELECT submission_id "
+            "    FROM submissions "
+            "    WHERE event_id = ?"
+            ") "
+            "AND user_id = ?"
+        ),
+        (event_id, user.id)
+    )
     vote_count = cursor.fetchone()[0]
 
     if vote_count >= 3:
+        logging.info(f"User {user.name} has already voted 3 times for event {event_id}")
         return
 
-    # Other checks and code
+    # Record the vote
     vote_value = VOTE_VALUES.get(vote_count, 1)
-
-    cursor.execute("INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) VALUES (?, ?, ?, ?, ?)", (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user.name))
+    cursor.execute(
+        (
+            "INSERT INTO votes (submission_id, user_id, vote_value, vote_time, voter_name) "
+            "VALUES (?, ?, ?, ?, ?)"
+        ),
+        (submission_id, user.id, vote_value, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user.name)
+    )
     conn.commit()
+    logging.info(f"Vote recorded for submission {submission_id} by user {user.name} (value: {vote_value})")
     
-    await bot.get_cog("Commands").update_event_message(event_id)
-
-    score = bot.get_cog("Commands").calculate_score(submission_id)
-    await bot.get_cog("Commands").check_milestones(event_id, submission_id, score)
-
+    # Update event message and check milestones
+    commands_cog = bot.get_cog("Commands")
+    await commands_cog.update_event_message(event_id)
+    score = commands_cog.calculate_score(submission_id)
+    await commands_cog.check_milestones(event_id, submission_id, score)
 
     if score >= 100:
-        await bot.get_cog("Commands").end_event(event_id)
-
-# Load commands extension
-bot.load_extension('commands')
+        await commands_cog.end_event(event_id)
 
 # Run the bot
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
