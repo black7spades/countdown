@@ -5,7 +5,7 @@ import sqlite3  # Import the sqlite3 module
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Construct the absolute path to the database file
-DB_PATH = os.path.join(BASE_DIR, "countdown_bot.db")
+DB_PATH = os.path.join(BASE_DIR, "/data/countdown_bot.db")
 
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
