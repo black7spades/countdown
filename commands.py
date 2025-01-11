@@ -16,7 +16,7 @@ class Commands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="countdownstart")
+ @commands.command(name="countdownstart")
     @commands.has_permissions(administrator=True)
     async def countdownstart(self, ctx):
         """Start a new countdown event."""
@@ -30,9 +30,22 @@ class Commands(commands.Cog):
             name_msg = await self.bot.wait_for("message", check=check, timeout=60)
             event_name = name_msg.content
 
-            await ctx.send("⏳ How long should the event last? (e.g., `7 days`)")
+            await ctx.send("⏳ How long should the event last? (e.g., `7 days`, `2 hours`, `30 minutes`)")
             duration_msg = await self.bot.wait_for("message", check=check, timeout=60)
-            duration = int(duration_msg.content)
+            duration_parts = duration_msg.content.split()
+            if len(duration_parts) != 2:
+                await ctx.send("⚠️ Invalid duration format. Please use `number unit` (e.g., `7 days`, `2 hours`, `30 minutes`).")
+                return
+            try:
+                duration_value = int(duration_parts[0])
+            except ValueError:
+                await ctx.send("⚠️ Invalid duration number.")
+                return
+
+            duration_unit = duration_parts[1].lower()
+            if duration_unit not in ["days", "hours", "minutes"]:
+                await ctx.send("⚠️ Invalid duration unit. Please use `days`, `hours`, or `minutes`.")
+                return
 
             await ctx.send("📥 Minimum number of submissions required?")
             min_msg = await self.bot.wait_for("message", check=check, timeout=60)
@@ -52,19 +65,27 @@ class Commands(commands.Cog):
 
             # Calculate end time
             start_time = datetime.now()
-            end_time = start_time + timedelta(days=duration)
+            if duration_unit == "days":
+                end_time = start_time + timedelta(days=duration_value)
+                duration_seconds = duration_value * 24 * 60 * 60
+            elif duration_unit == "hours":
+                end_time = start_time + timedelta(hours=duration_value)
+                duration_seconds = duration_value * 60 * 60
+            elif duration_unit == "minutes":
+                end_time = start_time + timedelta(minutes=duration_value)
+                duration_seconds = duration_value * 60
 
             # Insert into database
             cursor.execute("""
                 INSERT INTO events (name, duration, min_submissions, max_submissions, song_min_duration, song_max_duration, start_time, end_time, channel_id, active)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            """, (event_name, duration, min_submissions, max_submissions, min_duration, max_duration, start_time.strftime("%Y-%m-%d %H:%M:%S"), end_time.strftime("%Y-%m-%d %H:%M:%S"), ctx.channel.id))
+            """, (event_name, duration_seconds, min_submissions, max_submissions, min_duration, max_duration, start_time.strftime("%Y-%m-%d %H:%M:%S"), end_time.strftime("%Y-%m-%d %H:%M:%S"), ctx.channel.id))
             event_id = cursor.lastrowid
             conn.commit()
 
             embed = discord.Embed(title=f"Countdown Event: {event_name}", description="Current Standings:")
             embed.add_field(name="No Submissions Yet!", value="\u200b", inline=False)
-            time_left = end_time - datetime.now()
+            time_left = end_time - start_time
             embed.set_footer(text=f"Time left: {time_left}")
 
             message = await ctx.send(embed=embed)
@@ -84,62 +105,6 @@ class Commands(commands.Cog):
         except Exception as e:
             logging.error(f"Error during event setup: {e}")
             await ctx.send("⚠️ **Error setting up the event. Please try again!**")
-
-    @commands.command(name="submitsong")
-    async def submitsong(self, ctx):
-        """Submit a song to the active event."""
-        event = get_active_event()
-        if not event:
-            await ctx.author.send("⚠️ No active Countdown Event. Submissions are closed.")
-            return
-
-        event_id = event[0]
-        await ctx.author.send("🎵 Let's submit your song! What's the name of your song?")
-
-        def check_dm(msg):
-            return msg.author == ctx.author and isinstance(msg.channel, discord.DMChannel)
-
-        try:
-            # Collect and validate song details
-            name_msg = await self.bot.wait_for("message", check=check_dm, timeout=60)
-            song_name = name_msg.content
-
-            await ctx.author.send("🔗 Provide the URL for your song.")
-            url_msg = await self.bot.wait_for("message", check=check_dm, timeout=60)
-            song_url = url_msg.content
-
-            await ctx.author.send("⏳ What is the duration of the song? (e.g., `3:42`)")
-            duration_msg = await self.bot.wait_for("message", check=check_dm, timeout=60)
-            song_duration = duration_msg.content
-
-            min_dur_sec = event[5]
-            max_dur_sec = event[6]
-            song_dur_sec = time_to_seconds(song_duration)
-
-            if not (min_dur_sec <= song_dur_sec <= max_dur_sec):
-                await ctx.author.send(f"⚠️ Invalid song duration. It must be between {event[5]} and {event[6]}.")
-                return
-
-            track_id = f"Track-{len(cursor.execute('SELECT * FROM submissions WHERE event_id = ?', (event_id,)).fetchall()) + 1}"
-            cursor.execute("""
-                INSERT INTO submissions (event_id, user_id, song_name, url, duration, submission_time, track_id, submitter_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (event_id, ctx.author.id, song_name, song_url, song_dur_sec, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), track_id, ctx.author.name))
-            conn.commit()
-
-            logging.info(f"Submission received for event ID {event_id}: {song_name} ({song_url})")
-            cursor.execute("SELECT name FROM events WHERE event_id = ?", (event_id,))
-            event_name = cursor.fetchone()[0]
-            await ctx.author.send(f"✅ Your song has been submitted as **{track_id}** to event **{event_name}**. Check the event channel to react with your 3 votes and update the standings!")
-            await self.update_event_message(event_id)
-
-        except asyncio.TimeoutError:
-            await ctx.author.send("⚠️ **You took too long to respond. Submission cancelled.**")
-        except ValueError:
-            await ctx.author.send("⚠️ **Invalid duration format. Please use `MM:SS`.**")
-        except Exception as e:
-            logging.error(f"Error during song submission: {e}")
-            await ctx.author.send("⚠️ **Error submitting your song. Please try again!**")
             
     @commands.command(name="submitvote")
     async def submitvote(self, ctx, *votes):
