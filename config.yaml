@@ -1,8 +1,5 @@
 bot:
   log_level: "INFO"
-  admin_channel_id: "YOUR_ADMIN_CHANNEL_ID" # Replace with your admin channel ID
-  public_channel_id: "YOUR_PUBLIC_CHANNEL_ID" # Replace with your public channel ID
-  winners_channel_id: "YOUR_WINNERS_CHANNEL_ID" # Replace with your winners channel ID
 
 event:
   default_duration: 7  # Default duration for new events (in days)
