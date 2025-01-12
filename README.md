@@ -2,7 +2,7 @@
 
 Manage COUNTDOWN song competition events in Discord!
 
-Users submit songs within a set time period.  Members of the Discord server can then vote on their favorite submissions, and the bot tracks the scores, possibly announcing milestones along the way. At the end of the event's duration, the bot declares a winner based on the highest-scoring song. It's a fun, interactive way for users to share and discover music within a Discord community, centered around specific themes.
+Users submit songs within a set time period.  Members of the Discord server can then vote on their favorite submissions, and the bot tracks the scores, announcing milestones along the way. At the end of the event's duration, or when a song reaches 100 votes, the bot declares a winner based on the highest-scoring song. It's a fun, interactive way for users to share and discover music within a Discord community, centered around specific themes.
 
 ## Features
 
